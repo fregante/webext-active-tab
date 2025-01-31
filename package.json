@@ -1,6 +1,6 @@
 {
 	"name": "webext-active-tab",
-	"version": "0.0.0",
+	"version": "0.9.0",
 	"description": "WebExtension module: Track `activeTab` permission; automatically inject content scripts",
 	"keywords": [
 		"contentscript",
