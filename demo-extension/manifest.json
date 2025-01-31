@@ -1,0 +1,11 @@
+{
+	"name": "webext-active-tab",
+	"version": "0.0.0",
+	"manifest_version": 3,
+	"permissions": ["webNavigation", "scripting", "activeTab", "storage"],
+	"background": {
+		"service_worker": "background.js",
+		"type": "module"
+	},
+	"action": {}
+}

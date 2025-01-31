@@ -1,0 +1,114 @@
+import {isScriptableUrl} from 'webext-content-scripts';
+import {isBackground} from 'webext-detect';
+import SimpleEventTarget from 'simple-event-target';
+
+if (!isBackground()) {
+	throw new Error('This module is only allowed in a background script');
+}
+
+if (!chrome.runtime.getManifest().permissions?.includes('activeTab')) {
+	throw new Error('The manifest should include the `activeTab` permission for `webext-active-tab` to work');
+}
+
+type TabId = number;
+type Origin = string;
+
+export type ActiveTab = {
+	id: TabId;
+	origin: Origin;
+};
+
+const activation = new SimpleEventTarget<ActiveTab>();
+const deactivation = new SimpleEventTarget<TabId>();
+
+const browserAction = chrome.action ?? chrome.browserAction;
+
+// TODO: use https://github.com/fregante/webext-storage/issues/5
+/**
+ * The list is not guaranteed to be up to date. The activeTab permission might be lost before it's detected.
+ */
+export const possiblyActiveTabs = new Map<TabId, Origin>();
+
+async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
+	if (
+		id && url
+
+		// Skip if it already exists. A previous change of origin already cleared this
+		&& !possiblyActiveTabs.has(id)
+
+		// ActiveTab doesn't make sense on non-scriptable URLs as they generally don't have scriptable frames
+		&& isScriptableUrl(url)
+
+	// Note: Do not filter by `isContentScriptRegistered`; `active-tab` also applies to random `executeScript` calls
+	) {
+		const {origin} = new URL(url);
+		console.debug('activeTab:', id, 'added', {origin});
+		possiblyActiveTabs.set(id, origin);
+		activation.emit({id, origin});
+	} else {
+		console.debug('activeTab:', id, 'not added', {origin});
+	}
+}
+
+function dropIfOriginChanged(tabId: number, {url}: chrome.tabs.TabChangeInfo): void {
+	if (url && possiblyActiveTabs.has(tabId)) {
+		const {origin} = new URL(url);
+		if (possiblyActiveTabs.get(tabId) !== origin) {
+			console.debug('activeTab:', tabId, 'removed because origin changed from', possiblyActiveTabs.get(tabId), 'to', origin);
+			possiblyActiveTabs.delete(tabId);
+		}
+	}
+}
+
+function altListener(_: unknown, tab?: chrome.tabs.Tab): void {
+	if (tab) {
+		void addIfScriptable(tab);
+	}
+}
+
+function drop(tabId: TabId): void {
+	console.debug('activeTab:', tabId, 'removed');
+	possiblyActiveTabs.delete(tabId);
+	deactivation.emit(tabId);
+}
+
+// https://developer.chrome.com/docs/extensions/mv3/manifest/activeTab/#invoking-activeTab
+function startActiveTabTracking(): void {
+	browserAction?.onClicked.addListener(addIfScriptable);
+	chrome.contextMenus?.onClicked.addListener(altListener);
+	chrome.commands?.onCommand.addListener(altListener);
+
+	chrome.tabs.onUpdated.addListener(dropIfOriginChanged);
+	chrome.tabs.onRemoved.addListener(drop);
+}
+
+function stopActiveTabTracking(): void {
+	browserAction?.onClicked.removeListener(addIfScriptable);
+	chrome.contextMenus?.onClicked.removeListener(altListener);
+	chrome.commands?.onCommand.removeListener(altListener);
+
+	chrome.tabs.onUpdated.removeListener(dropIfOriginChanged);
+	chrome.tabs.onRemoved.removeListener(drop);
+	possiblyActiveTabs.clear();
+}
+
+export const PRIVATE = {
+	startActiveTabTracking,
+	stopActiveTabTracking,
+};
+
+export const onActiveTab = {
+	addListener(callback: (tab: ActiveTab) => void): void {
+		startActiveTabTracking();
+		activation.subscribe(callback);
+	},
+	removeListener: activation.unsubscribe.bind(activation),
+};
+
+export const onActiveTabLost = {
+	addListener(callback: (tabId: TabId) => void): void {
+		startActiveTabTracking();
+		deactivation.subscribe(callback);
+	},
+	removeListener: deactivation.unsubscribe.bind(deactivation),
+};
