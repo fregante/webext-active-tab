@@ -4,8 +4,9 @@
 	"manifest_version": 3,
 	"permissions": ["webNavigation", "scripting", "activeTab", "storage"],
 	"background": {
+		"type": "module",
 		"service_worker": "background.js",
-		"type": "module"
+		"scripts": ["background.js"]
 	},
 	"action": {}
 }
