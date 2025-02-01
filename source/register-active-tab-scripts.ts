@@ -37,12 +37,14 @@ async function injectOneFrame(
 	{tabId, frameId, url}: InjectionDetails,
 ): Promise<void> {
 	const {origin} = new URL(url);
+	const activeOrigin = await possiblyActiveTabs.get(String(tabId));
+
 	// Check origin because the request might be for a frame; cross-origin frames do not receive activeTab
-	if (possiblyActiveTabs.get(tabId) === origin) {
+	if (activeOrigin === origin) {
 		console.debug('activeTab: will inject', {tabId, frameId, url});
 		await injectContentScript({tabId, frameId}, scripts);
 	} else {
-		console.debug('activeTab: won’t inject', {tabId, frameId, url}, {activeTab: possiblyActiveTabs.get(tabId) ?? 'no'});
+		console.debug('activeTab: won’t inject', {tabId, frameId, url}, {activeTab: activeOrigin ?? 'no'});
 	}
 }
 
