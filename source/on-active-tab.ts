@@ -27,9 +27,11 @@ const browserAction = chrome.action ?? chrome.browserAction;
 /**
  * The list is not guaranteed to be up to date. The activeTab permission might be lost before it's detected.
  */
-export const possiblyActiveTabs = new StorageItemMap<Origin>('webext-active-tab', {
-	area: 'session',
-});
+export const possiblyActiveTabs = chrome.storage.session
+	? new StorageItemMap<Origin>('webext-active-tab', {
+		area: 'session',
+	})
+	: new Map<string, Origin>();
 
 async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
 	if (
