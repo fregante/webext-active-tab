@@ -1,6 +1,7 @@
 import {isScriptableUrl} from 'webext-content-scripts';
 import {isBackground} from 'webext-detect';
 import SimpleEventTarget from 'simple-event-target';
+import {StorageItemMap} from 'webext-storage';
 
 if (!isBackground()) {
 	throw new Error('This module is only allowed in a background script');
@@ -23,18 +24,19 @@ const deactivation = new SimpleEventTarget<TabId>();
 
 const browserAction = chrome.action ?? chrome.browserAction;
 
-// TODO: use https://github.com/fregante/webext-storage/issues/5
 /**
  * The list is not guaranteed to be up to date. The activeTab permission might be lost before it's detected.
  */
-export const possiblyActiveTabs = new Map<TabId, Origin>();
+export const possiblyActiveTabs = new StorageItemMap<Origin>('webext-active-tab', {
+	area: 'session',
+});
 
 async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
 	if (
 		id && url
 
 		// Skip if it already exists. A previous change of origin already cleared this
-		&& !possiblyActiveTabs.has(id)
+		&& !await possiblyActiveTabs.has(String(id))
 
 		// ActiveTab doesn't make sense on non-scriptable URLs as they generally don't have scriptable frames
 		&& isScriptableUrl(url)
@@ -43,20 +45,23 @@ async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
 	) {
 		const {origin} = new URL(url);
 		console.debug('activeTab:', id, 'added', {origin});
-		possiblyActiveTabs.set(id, origin);
+		await possiblyActiveTabs.set(String(id), origin);
 		activation.emit({id, origin});
 	} else {
 		console.debug('activeTab:', id, 'not added', {origin});
 	}
 }
 
-function dropIfOriginChanged(tabId: number, {url}: chrome.tabs.TabChangeInfo): void {
-	if (url && possiblyActiveTabs.has(tabId)) {
-		const {origin} = new URL(url);
-		if (possiblyActiveTabs.get(tabId) !== origin) {
-			console.debug('activeTab:', tabId, 'removed because origin changed from', possiblyActiveTabs.get(tabId), 'to', origin);
-			possiblyActiveTabs.delete(tabId);
-		}
+async function dropIfOriginChanged(tabId: number, {url}: chrome.tabs.TabChangeInfo): Promise<void> {
+	if (!url) {
+		return;
+	}
+
+	const activeOrigin = await possiblyActiveTabs.get(String(tabId));
+	const {origin} = new URL(url);
+	if (activeOrigin !== origin) {
+		console.debug('activeTab:', tabId, 'removed because origin changed from', activeOrigin, 'to', origin);
+		void possiblyActiveTabs.delete(String(tabId));
 	}
 }
 
@@ -68,7 +73,7 @@ function altListener(_: unknown, tab?: chrome.tabs.Tab): void {
 
 function drop(tabId: TabId): void {
 	console.debug('activeTab:', tabId, 'removed');
-	possiblyActiveTabs.delete(tabId);
+	void possiblyActiveTabs.delete(String(tabId));
 	deactivation.emit(tabId);
 }
 
@@ -89,7 +94,8 @@ function stopActiveTabTracking(): void {
 
 	chrome.tabs.onUpdated.removeListener(dropIfOriginChanged);
 	chrome.tabs.onRemoved.removeListener(drop);
-	possiblyActiveTabs.clear();
+	// TODO: Restore after https://github.com/fregante/webext-storage/issues/9
+	// void possiblyActiveTabs.clear();
 }
 
 export const PRIVATE = {
