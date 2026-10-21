@@ -25,17 +25,17 @@ const deactivation = new SimpleEventTarget<TabId>();
 const browserAction = chrome.action ?? chrome.browserAction;
 
 /**
- * The list is not guaranteed to be up to date. The activeTab permission might be lost before it's detected.
+ The list is not guaranteed to be up to date. The activeTab permission might be lost before it's detected.
  */
-export const possiblyActiveTabs = chrome.storage.session
-	? new StorageItemMap<Origin>('webext-active-tab', {
+export const possiblyActiveTabs = chrome.storage.session === undefined
+	? new Map<string, Origin>()
+	: new StorageItemMap<Origin>('webext-active-tab', {
 		area: 'session',
-	})
-	: new Map<string, Origin>();
+	});
 
 async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
 	if (
-		id && url
+		id !== undefined && url !== undefined
 
 		// Skip if it already exists. A previous change of origin already cleared this
 		&& !await possiblyActiveTabs.has(String(id))
@@ -54,17 +54,20 @@ async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
 	}
 }
 
-async function dropIfOriginChanged(tabId: number, {url}: chrome.tabs.TabChangeInfo): Promise<void> {
-	if (!url) {
+async function dropIfOriginChanged(tabId: number, {url}: chrome.tabs.OnUpdatedInfo): Promise<void> {
+	if (url === undefined) {
 		return;
 	}
 
 	const activeOrigin = await possiblyActiveTabs.get(String(tabId));
 	const {origin} = new URL(url);
-	if (activeOrigin !== origin) {
-		console.debug('activeTab:', tabId, 'removed because origin changed from', activeOrigin, 'to', origin);
-		void possiblyActiveTabs.delete(String(tabId));
+	if (activeOrigin === origin) {
+		return;
 	}
+
+	console.debug('activeTab:', tabId, 'removed because origin changed from', activeOrigin, 'to', origin);
+	// eslint-disable-next-line @typescript-eslint/no-deprecated -- `Map` doesn't have `remove`
+	void possiblyActiveTabs.delete(String(tabId));
 }
 
 function altListener(_: unknown, tab?: chrome.tabs.Tab): void {
@@ -75,6 +78,7 @@ function altListener(_: unknown, tab?: chrome.tabs.Tab): void {
 
 function drop(tabId: TabId): void {
 	console.debug('activeTab:', tabId, 'removed');
+	// eslint-disable-next-line @typescript-eslint/no-deprecated -- `Map` doesn't have `remove`
 	void possiblyActiveTabs.delete(String(tabId));
 	deactivation.emit(tabId);
 }
