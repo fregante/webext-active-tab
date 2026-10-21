@@ -23,8 +23,9 @@ const activation = new SimpleEventTarget<ActiveTab>();
 const deactivation = new SimpleEventTarget<TabId>();
 
 /**
- * The list is not guaranteed to be up to date. The activeTab permission might be lost before it's detected.
+ The list is not guaranteed to be up to date. The activeTab permission might be lost before it's detected.
  */
+// eslint-disable-next-line @typescript-eslint/strict-boolean-expressions -- Typed as always defined, but it can be missing at runtime
 export const possiblyActiveTabs = chrome.storage.session
 	? new StorageItemMap<Origin>('webext-active-tab', {
 		area: 'session',
@@ -33,7 +34,7 @@ export const possiblyActiveTabs = chrome.storage.session
 
 async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
 	if (
-		id && url
+		id !== undefined && url !== undefined
 
 		// Skip if it already exists. A previous change of origin already cleared this
 		&& !await possiblyActiveTabs.has(String(id))
@@ -52,17 +53,19 @@ async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
 	}
 }
 
-async function dropIfOriginChanged(tabId: number, {url}: chrome.tabs.TabChangeInfo): Promise<void> {
-	if (!url) {
+async function dropIfOriginChanged(tabId: number, {url}: chrome.tabs.OnUpdatedInfo): Promise<void> {
+	if (url === undefined || url === '') {
 		return;
 	}
 
 	const activeOrigin = await possiblyActiveTabs.get(String(tabId));
 	const {origin} = new URL(url);
-	if (activeOrigin !== origin) {
-		console.debug('activeTab:', tabId, 'removed because origin changed from', activeOrigin, 'to', origin);
-		void possiblyActiveTabs.delete(String(tabId));
+	if (activeOrigin === origin) {
+		return;
 	}
+
+	console.debug('activeTab:', tabId, 'removed because origin changed from', activeOrigin, 'to', origin);
+	void possiblyActiveTabs.delete(String(tabId));
 }
 
 function altListener(_: unknown, tab?: chrome.tabs.Tab): void {
@@ -79,19 +82,23 @@ function drop(tabId: TabId): void {
 
 // https://developer.chrome.com/docs/extensions/mv3/manifest/activeTab/#invoking-activeTab
 function startActiveTabTracking(): void {
+	// eslint-disable-next-line @typescript-eslint/strict-void-return -- Async listener
 	chrome.action.onClicked.addListener(addIfScriptable);
 	chrome.contextMenus?.onClicked.addListener(altListener);
 	chrome.commands?.onCommand.addListener(altListener);
 
+	// eslint-disable-next-line @typescript-eslint/strict-void-return -- Async listener
 	chrome.tabs.onUpdated.addListener(dropIfOriginChanged);
 	chrome.tabs.onRemoved.addListener(drop);
 }
 
 function stopActiveTabTracking(): void {
+	// eslint-disable-next-line @typescript-eslint/strict-void-return -- Async listener
 	chrome.action.onClicked.removeListener(addIfScriptable);
 	chrome.contextMenus?.onClicked.removeListener(altListener);
 	chrome.commands?.onCommand.removeListener(altListener);
 
+	// eslint-disable-next-line @typescript-eslint/strict-void-return -- Async listener
 	chrome.tabs.onUpdated.removeListener(dropIfOriginChanged);
 	chrome.tabs.onRemoved.removeListener(drop);
 	// TODO: Restore after https://github.com/fregante/webext-storage/issues/9

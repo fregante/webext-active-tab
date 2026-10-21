@@ -1,6 +1,13 @@
 {
 	"extends": "@sindresorhus/tsconfig",
+	"compilerOptions": {
+		"types": [
+			"chrome"
+		],
+		"rootDir": "source",
+		"outDir": "distribution"
+	},
 	"include": [
-		"source",
+		"source"
 	]
 }
