@@ -82,23 +82,19 @@ function drop(tabId: TabId): void {
 
 // https://developer.chrome.com/docs/extensions/mv3/manifest/activeTab/#invoking-activeTab
 function startActiveTabTracking(): void {
-	// eslint-disable-next-line @typescript-eslint/strict-void-return -- Async listener
 	chrome.action.onClicked.addListener(addIfScriptable);
 	chrome.contextMenus?.onClicked.addListener(altListener);
 	chrome.commands?.onCommand.addListener(altListener);
 
-	// eslint-disable-next-line @typescript-eslint/strict-void-return -- Async listener
 	chrome.tabs.onUpdated.addListener(dropIfOriginChanged);
 	chrome.tabs.onRemoved.addListener(drop);
 }
 
 function stopActiveTabTracking(): void {
-	// eslint-disable-next-line @typescript-eslint/strict-void-return -- Async listener
 	chrome.action.onClicked.removeListener(addIfScriptable);
 	chrome.contextMenus?.onClicked.removeListener(altListener);
 	chrome.commands?.onCommand.removeListener(altListener);
 
-	// eslint-disable-next-line @typescript-eslint/strict-void-return -- Async listener
 	chrome.tabs.onUpdated.removeListener(dropIfOriginChanged);
 	chrome.tabs.onRemoved.removeListener(drop);
 	// TODO: Restore after https://github.com/fregante/webext-storage/issues/9

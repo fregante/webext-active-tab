@@ -63,14 +63,11 @@ async function tabListener(
 export default function registerActiveTabScripts(...newScripts: ActiveTabContentScript[]) {
 	scripts.push(...newScripts);
 
-	// eslint-disable-next-line @typescript-eslint/strict-void-return -- Async listener
 	onActiveTab.addListener(injectAllFrames);
 
 	if (isGotNavigation) {
-		// eslint-disable-next-line @typescript-eslint/strict-void-return -- Async listener
 		chrome.webNavigation.onCommitted.addListener(injectOneFrame);
 	} else {
-		// eslint-disable-next-line @typescript-eslint/strict-void-return -- Async listener
 		chrome.tabs.onUpdated.addListener(tabListener);
 	}
 }

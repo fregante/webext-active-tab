@@ -16,6 +16,7 @@ const xoConfig = [
 		},
 		rules: {
 			'no-implicit-globals': 'off',
+			'@typescript-eslint/strict-void-return': 'off',
 			'@typescript-eslint/prefer-nullish-coalescing': 'off',
 			'@typescript-eslint/no-implicit-any-catch': 'off',
 			'@typescript-eslint/naming-convention': 'off',
