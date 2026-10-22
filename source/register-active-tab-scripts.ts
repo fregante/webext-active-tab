@@ -14,7 +14,7 @@ type InjectionDetails = {
 	url: string;
 };
 
-const isGotNavigation = typeof chrome === 'object' && 'webNavigation' in chrome;
+const hasNavigation = typeof chrome === 'object' && 'webNavigation' in chrome;
 
 const scripts: ActiveTabContentScript[] = [];
 
@@ -23,7 +23,7 @@ async function injectAllFrames({id: tabId, origin: url}: ActiveTab): Promise<voi
 		return;
 	}
 
-	if (!isGotNavigation) {
+	if (!hasNavigation) {
 		// Without it, we only inject it into the top frame
 		return injectOneFrame({frameId: 0, url, tabId});
 	}
@@ -65,7 +65,7 @@ export default function registerActiveTabScripts(...newScripts: ActiveTabContent
 
 	onActiveTab.addListener(injectAllFrames);
 
-	if (isGotNavigation) {
+	if (hasNavigation) {
 		chrome.webNavigation.onCommitted.addListener(injectOneFrame);
 	} else {
 		chrome.tabs.onUpdated.addListener(tabListener);
