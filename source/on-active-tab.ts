@@ -22,15 +22,33 @@ export type ActiveTab = {
 const activation = new SimpleEventTarget<ActiveTab>();
 const deactivation = new SimpleEventTarget<TabId>();
 
+type ActiveTabStore = Pick<StorageItemMap<Origin>, 'has' | 'get' | 'set' | 'remove'>;
+
+// Fallback for when the `storage` permission is missing or `storage.session` is unavailable
+const memory = new Map<string, Origin>();
+
 /**
  The list is not guaranteed to be up to date. The activeTab permission might be lost before it's detected.
  */
-// eslint-disable-next-line @typescript-eslint/strict-boolean-expressions -- Typed as always defined, but it can be missing at runtime
-export const possiblyActiveTabs = chrome.storage.session
+// eslint-disable-next-line @typescript-eslint/strict-boolean-expressions -- Typed as always defined, but `chrome.storage` or `chrome.storage.session` can be missing at runtime
+export const possiblyActiveTabs: ActiveTabStore = chrome.storage?.session
 	? new StorageItemMap<Origin>('webext-active-tab', {
 		area: 'session',
 	})
-	: new Map<string, Origin>();
+	: {
+		async has(tabId) {
+			return memory.has(tabId);
+		},
+		async get(tabId) {
+			return memory.get(tabId);
+		},
+		async set(tabId, origin) {
+			memory.set(tabId, origin);
+		},
+		async remove(tabId) {
+			memory.delete(tabId);
+		},
+	};
 
 async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
 	if (
@@ -49,7 +67,19 @@ async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
 		await possiblyActiveTabs.set(String(id), origin);
 		activation.emit({id, origin});
 	} else {
-		console.debug('activeTab:', id, 'not added', {origin});
+		console.debug('activeTab:', id, 'not added', {url});
+	}
+}
+
+async function drop(tabId: TabId): Promise<void> {
+	console.debug('activeTab:', tabId, 'removed');
+	await possiblyActiveTabs.remove(String(tabId));
+	deactivation.emit(tabId);
+}
+
+async function dropIfActive(tabId: TabId): Promise<void> {
+	if (await possiblyActiveTabs.has(String(tabId))) {
+		await drop(tabId);
 	}
 }
 
@@ -59,13 +89,19 @@ async function dropIfOriginChanged(tabId: number, {url}: chrome.tabs.OnUpdatedIn
 	}
 
 	const activeOrigin = await possiblyActiveTabs.get(String(tabId));
+
+	// Not active, nothing to drop
+	if (activeOrigin === undefined) {
+		return;
+	}
+
 	const {origin} = new URL(url);
 	if (activeOrigin === origin) {
 		return;
 	}
 
 	console.debug('activeTab:', tabId, 'removed because origin changed from', activeOrigin, 'to', origin);
-	void possiblyActiveTabs.delete(String(tabId));
+	await drop(tabId);
 }
 
 function altListener(_: unknown, tab?: chrome.tabs.Tab): void {
@@ -74,29 +110,23 @@ function altListener(_: unknown, tab?: chrome.tabs.Tab): void {
 	}
 }
 
-function drop(tabId: TabId): void {
-	console.debug('activeTab:', tabId, 'removed');
-	void possiblyActiveTabs.delete(String(tabId));
-	deactivation.emit(tabId);
-}
-
 // https://developer.chrome.com/docs/extensions/mv3/manifest/activeTab/#invoking-activeTab
 function startActiveTabTracking(): void {
-	chrome.action.onClicked.addListener(addIfScriptable);
+	chrome.action?.onClicked.addListener(addIfScriptable);
 	chrome.contextMenus?.onClicked.addListener(altListener);
 	chrome.commands?.onCommand.addListener(altListener);
 
 	chrome.tabs.onUpdated.addListener(dropIfOriginChanged);
-	chrome.tabs.onRemoved.addListener(drop);
+	chrome.tabs.onRemoved.addListener(dropIfActive);
 }
 
 function stopActiveTabTracking(): void {
-	chrome.action.onClicked.removeListener(addIfScriptable);
+	chrome.action?.onClicked.removeListener(addIfScriptable);
 	chrome.contextMenus?.onClicked.removeListener(altListener);
 	chrome.commands?.onCommand.removeListener(altListener);
 
 	chrome.tabs.onUpdated.removeListener(dropIfOriginChanged);
-	chrome.tabs.onRemoved.removeListener(drop);
+	chrome.tabs.onRemoved.removeListener(dropIfActive);
 	// TODO: Restore after https://github.com/fregante/webext-storage/issues/9
 	// void possiblyActiveTabs.clear();
 }

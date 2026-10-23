@@ -3,6 +3,8 @@ name: Test
 on:
   pull_request:
   push:
+    branches:
+      - main
 
 jobs:
   Lint:
@@ -13,7 +15,7 @@ jobs:
         with:
           node-version-file: package.json
       - run: npm ci
-      - run: npx xo
+      - run: npm run lint
 
   Build:
     runs-on: ubuntu-latest

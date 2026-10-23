@@ -21,9 +21,6 @@ registerActiveTabScripts({
 	css: [
 		'content.css',
 	],
-
-	runAt: 'document_idle',
-	matchAboutBlank: false,
 });
 ```
 
@@ -35,6 +32,7 @@ registerActiveTabScripts({
 ## Permissions
 
 - `activeTab`
+- `storage` (optional; without it, the list of active tabs is lost when the background context restarts)
 - `scripting`
 - `webNavigation` (only if you need consistent iframe injection)
 	- consider using `optional_permissions` and request it later if the user needs it
