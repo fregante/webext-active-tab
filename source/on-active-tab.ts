@@ -22,8 +22,6 @@ export type ActiveTab = {
 const activation = new SimpleEventTarget<ActiveTab>();
 const deactivation = new SimpleEventTarget<TabId>();
 
-const browserAction = chrome.action ?? chrome.browserAction;
-
 /**
  * The list is not guaranteed to be up to date. The activeTab permission might be lost before it's detected.
  */
@@ -81,7 +79,7 @@ function drop(tabId: TabId): void {
 
 // https://developer.chrome.com/docs/extensions/mv3/manifest/activeTab/#invoking-activeTab
 function startActiveTabTracking(): void {
-	browserAction?.onClicked.addListener(addIfScriptable);
+	chrome.action.onClicked.addListener(addIfScriptable);
 	chrome.contextMenus?.onClicked.addListener(altListener);
 	chrome.commands?.onCommand.addListener(altListener);
 
@@ -90,7 +88,7 @@ function startActiveTabTracking(): void {
 }
 
 function stopActiveTabTracking(): void {
-	browserAction?.onClicked.removeListener(addIfScriptable);
+	chrome.action.onClicked.removeListener(addIfScriptable);
 	chrome.contextMenus?.onClicked.removeListener(altListener);
 	chrome.commands?.onCommand.removeListener(altListener);
 

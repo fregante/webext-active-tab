@@ -30,12 +30,12 @@ registerActiveTabScripts({
 ## Compatibility
 
 - Browser: any browser
-- Manifest: MV2, MV3
+- Manifest: MV3
 
 ## Permissions
 
 - `activeTab`
-- `scripting` (only in MV3)
+- `scripting`
 - `webNavigation` (only if you need consistent iframe injection)
 	- consider using `optional_permissions` and request it later if the user needs it
 
