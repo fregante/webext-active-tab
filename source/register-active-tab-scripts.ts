@@ -14,7 +14,7 @@ type InjectionDetails = {
 	url: string;
 };
 
-const gotNavigation = typeof chrome === 'object' && 'webNavigation' in chrome;
+const hasNavigation = typeof chrome === 'object' && 'webNavigation' in chrome;
 
 const scripts: ActiveTabContentScript[] = [];
 
@@ -23,14 +23,14 @@ async function injectAllFrames({id: tabId, origin: url}: ActiveTab): Promise<voi
 		return;
 	}
 
-	if (!gotNavigation) {
+	if (!hasNavigation) {
 		// Without it, we only inject it into the top frame
 		return injectOneFrame({frameId: 0, url, tabId});
 	}
 
 	const frames = await chrome.webNavigation.getAllFrames({tabId});
 	// .map() needed for async loop
-	void frames?.map(async ({frameId, url}) => injectOneFrame({frameId, url, tabId}));
+	void frames?.map(async ({frameId, url: frameUrl}) => injectOneFrame({frameId, url: frameUrl, tabId}));
 }
 
 async function injectOneFrame(
@@ -50,12 +50,12 @@ async function injectOneFrame(
 
 async function tabListener(
 	tabId: number,
-	{status}: chrome.tabs.TabChangeInfo,
+	{status}: chrome.tabs.OnUpdatedInfo,
 	{url}: chrome.tabs.Tab,
 ): Promise<void> {
 	// Only status updates are relevant
 	// No URL = no permission
-	if (status === 'loading' && url) {
+	if (status === 'loading' && url !== undefined) {
 		await injectOneFrame({tabId, url, frameId: 0});
 	}
 }
@@ -65,7 +65,7 @@ export default function registerActiveTabScripts(...newScripts: ActiveTabContent
 
 	onActiveTab.addListener(injectAllFrames);
 
-	if (gotNavigation) {
+	if (hasNavigation) {
 		chrome.webNavigation.onCommitted.addListener(injectOneFrame);
 	} else {
 		chrome.tabs.onUpdated.addListener(tabListener);
