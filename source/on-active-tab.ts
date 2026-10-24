@@ -53,16 +53,37 @@ async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
 	}
 }
 
-async function drop(tabId: TabId): Promise<void> {
-	console.debug('activeTab:', tabId, 'removed');
-	await possiblyActiveTabs.delete(String(tabId));
-	deactivation.emit(tabId);
+// Serialized per tab, so overlapping events can't both see the entry and emit twice
+const pendingDrops = new Map<TabId, Promise<void>>();
+
+// Drops the tab if it's active, unless it's still on `keepOrigin`
+async function drop(tabId: TabId, keepOrigin?: Origin): Promise<void> {
+	const previous = pendingDrops.get(tabId) ?? Promise.resolve();
+	const current = previous.then(async () => {
+		const activeOrigin = await possiblyActiveTabs.get(String(tabId));
+
+		// Not active, nothing to drop
+		if (activeOrigin === undefined || activeOrigin === keepOrigin) {
+			return;
+		}
+
+		console.debug('activeTab:', tabId, 'removed', {activeOrigin, keepOrigin});
+		await possiblyActiveTabs.delete(String(tabId));
+		deactivation.emit(tabId);
+	});
+	const settled = current.catch(() => undefined);
+	pendingDrops.set(tabId, settled);
+	try {
+		await current;
+	} finally {
+		if (pendingDrops.get(tabId) === settled) {
+			pendingDrops.delete(tabId);
+		}
+	}
 }
 
 async function dropIfActive(tabId: TabId): Promise<void> {
-	if (await possiblyActiveTabs.has(String(tabId))) {
-		await drop(tabId);
-	}
+	await drop(tabId);
 }
 
 async function dropIfOriginChanged(tabId: number, {url}: chrome.tabs.OnUpdatedInfo): Promise<void> {
@@ -70,20 +91,7 @@ async function dropIfOriginChanged(tabId: number, {url}: chrome.tabs.OnUpdatedIn
 		return;
 	}
 
-	const activeOrigin = await possiblyActiveTabs.get(String(tabId));
-
-	// Not active, nothing to drop
-	if (activeOrigin === undefined) {
-		return;
-	}
-
-	const {origin} = new URL(url);
-	if (activeOrigin === origin) {
-		return;
-	}
-
-	console.debug('activeTab:', tabId, 'removed because origin changed from', activeOrigin, 'to', origin);
-	await drop(tabId);
+	await drop(tabId, new URL(url).origin);
 }
 
 function altListener(_: unknown, tab?: chrome.tabs.Tab): void {
