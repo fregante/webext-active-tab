@@ -1,9 +1,11 @@
-import {injectContentScript} from 'webext-content-scripts';
+import {injectContentScript, type RunAt} from 'webext-content-scripts';
 import {type ActiveTab, onActiveTab, possiblyActiveTabs} from './on-active-tab.js';
 
 export type ActiveTabContentScript = {
 	css?: string[];
 	js?: string[];
+	matchAboutBlank?: boolean;
+	runAt?: RunAt;
 };
 
 type InjectionDetails = {
@@ -41,7 +43,12 @@ async function injectOneFrame(
 	if (activeOrigin === origin) {
 		console.debug('activeTab: will inject', {tabId, frameId, url});
 		try {
-			await injectContentScript({tabId, frameId}, scripts, {ignoreTargetErrors: true});
+			await injectContentScript(
+				{tabId, frameId},
+				// `webext-content-scripts` uses the `manifest.json` format
+				scripts.map(({runAt, matchAboutBlank, ...script}) => ({...script, run_at: runAt, match_about_blank: matchAboutBlank})),
+				{ignoreTargetErrors: true},
+			);
 		} catch (error) {
 			// The activeTab permission might have been lost without us knowing
 			console.warn('activeTab: injection failed', {tabId, frameId, url}, error);

@@ -21,6 +21,9 @@ registerActiveTabScripts({
 	css: [
 		'content.css',
 	],
+
+	runAt: 'document_idle',
+	matchAboutBlank: false,
 });
 ```
 
