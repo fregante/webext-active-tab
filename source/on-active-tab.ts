@@ -22,33 +22,15 @@ export type ActiveTab = {
 const activation = new SimpleEventTarget<ActiveTab>();
 const deactivation = new SimpleEventTarget<TabId>();
 
-type ActiveTabStore = Pick<StorageItemMap<Origin>, 'has' | 'get' | 'set' | 'remove'>;
-
-// Fallback for when the `storage` permission is missing or `storage.session` is unavailable
-const memory = new Map<string, Origin>();
-
 /**
  The list is not guaranteed to be up to date. The activeTab permission might be lost before it's detected.
  */
 // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions -- Typed as always defined, but `chrome.storage` or `chrome.storage.session` can be missing at runtime
-export const possiblyActiveTabs: ActiveTabStore = chrome.storage?.session
+export const possiblyActiveTabs = chrome.storage?.session
 	? new StorageItemMap<Origin>('webext-active-tab', {
 		area: 'session',
 	})
-	: {
-		async has(tabId) {
-			return memory.has(tabId);
-		},
-		async get(tabId) {
-			return memory.get(tabId);
-		},
-		async set(tabId, origin) {
-			memory.set(tabId, origin);
-		},
-		async remove(tabId) {
-			memory.delete(tabId);
-		},
-	};
+	: new Map<string, Origin>();
 
 async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
 	if (
@@ -73,7 +55,7 @@ async function addIfScriptable({url, id}: chrome.tabs.Tab): Promise<void> {
 
 async function drop(tabId: TabId): Promise<void> {
 	console.debug('activeTab:', tabId, 'removed');
-	await possiblyActiveTabs.remove(String(tabId));
+	await possiblyActiveTabs.delete(String(tabId));
 	deactivation.emit(tabId);
 }
 
