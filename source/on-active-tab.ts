@@ -58,25 +58,24 @@ const pendingDrops = new Map<TabId, Promise<void>>();
 
 // Drops the tab if it's active, unless it's still on `keepOrigin`
 async function drop(tabId: TabId, keepOrigin?: Origin): Promise<void> {
-	const previous = pendingDrops.get(tabId) ?? Promise.resolve();
-	const current = previous.then(async () => {
-		const activeOrigin = await possiblyActiveTabs.get(String(tabId));
+	const previous = pendingDrops.get(tabId);
+	const {promise: current, resolve: release} = Promise.withResolvers<void>();
+	pendingDrops.set(tabId, current);
 
-		// Not active, nothing to drop
-		if (activeOrigin === undefined || activeOrigin === keepOrigin) {
-			return;
-		}
-
-		console.debug('activeTab:', tabId, 'removed', {activeOrigin, keepOrigin});
-		await possiblyActiveTabs.delete(String(tabId));
-		deactivation.emit(tabId);
-	});
-	const settled = current.catch(() => undefined);
-	pendingDrops.set(tabId, settled);
 	try {
-		await current;
+		try {
+			await previous;
+		} catch {}
+
+		const activeOrigin = await possiblyActiveTabs.get(String(tabId));
+		if (activeOrigin !== undefined && activeOrigin !== keepOrigin) {
+			console.debug('activeTab:', tabId, 'removed', {activeOrigin, keepOrigin});
+			await possiblyActiveTabs.delete(String(tabId));
+			deactivation.emit(tabId);
+		}
 	} finally {
-		if (pendingDrops.get(tabId) === settled) {
+		release();
+		if (pendingDrops.get(tabId) === current) {
 			pendingDrops.delete(tabId);
 		}
 	}
