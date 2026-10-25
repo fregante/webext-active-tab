@@ -30,7 +30,7 @@ async function injectAllFrames({id: tabId, origin: url}: ActiveTab): Promise<voi
 
 	const frames = await chrome.webNavigation.getAllFrames({tabId});
 	// .map() needed for async loop
-	await Promise.allSettled(frames?.map(async ({frameId, url: frameUrl}) => injectOneFrame({frameId, url: frameUrl, tabId})) ?? []);
+	void frames?.map(async ({frameId, url: frameUrl}) => injectOneFrame({frameId, url: frameUrl, tabId}));
 }
 
 async function injectOneFrame(
@@ -42,17 +42,12 @@ async function injectOneFrame(
 	// Check origin because the request might be for a frame; cross-origin frames do not receive activeTab
 	if (activeOrigin === origin) {
 		console.debug('activeTab: will inject', {tabId, frameId, url});
-		try {
-			await injectContentScript(
-				{tabId, frameId},
-				// `webext-content-scripts` uses the `manifest.json` format
-				scripts.map(({runAt, matchAboutBlank, ...script}) => ({...script, run_at: runAt, match_about_blank: matchAboutBlank})),
-				{ignoreTargetErrors: true},
-			);
-		} catch (error) {
-			// The activeTab permission might have been lost without us knowing
-			console.warn('activeTab: injection failed', {tabId, frameId, url}, error);
-		}
+		await injectContentScript(
+			{tabId, frameId},
+			// `webext-content-scripts` uses the `manifest.json` format
+			scripts.map(({runAt, matchAboutBlank, ...script}) => ({...script, run_at: runAt, match_about_blank: matchAboutBlank})),
+			{ignoreTargetErrors: true},
+		);
 	} else {
 		console.debug('activeTab: won’t inject', {tabId, frameId, url}, {activeTab: activeOrigin ?? 'no'});
 	}
