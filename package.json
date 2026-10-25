@@ -1,6 +1,6 @@
 {
 	"name": "webext-active-tab",
-	"version": "0.10.0",
+	"version": "1.0.0",
 	"description": "WebExtension module: Track `activeTab` permission; automatically inject content scripts",
 	"license": "MIT",
 	"repository": "fregante/webext-active-tab",
