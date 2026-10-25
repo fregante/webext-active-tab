@@ -1,5 +1,5 @@
 import {isScriptableUrl} from 'webext-content-scripts';
-import {isBackground} from 'webext-detect';
+import {isBackground, isFirefox} from 'webext-detect';
 import SimpleEventTarget from 'simple-event-target';
 import {StorageItemMap} from 'webext-storage';
 
@@ -93,6 +93,13 @@ async function dropIfOriginChanged(tabId: number, {url}: chrome.tabs.OnUpdatedIn
 	await drop(tabId, new URL(url).origin);
 }
 
+// Firefox revokes `activeTab` on reload, Chrome doesn't
+function dropOnReload({tabId, frameId, transitionType}: chrome.webNavigation.WebNavigationTransitionCallbackDetails): void {
+	if (frameId === 0 && transitionType === 'reload') {
+		void dropIfActive(tabId);
+	}
+}
+
 function altListener(_: unknown, tab?: chrome.tabs.Tab): void {
 	if (tab) {
 		void addIfScriptable(tab);
@@ -107,6 +114,10 @@ function startActiveTabTracking(): void {
 
 	chrome.tabs.onUpdated.addListener(dropIfOriginChanged);
 	chrome.tabs.onRemoved.addListener(dropIfActive);
+
+	if (isFirefox()) {
+		chrome.webNavigation?.onCommitted.addListener(dropOnReload);
+	}
 }
 
 function stopActiveTabTracking(): void {
@@ -116,6 +127,11 @@ function stopActiveTabTracking(): void {
 
 	chrome.tabs.onUpdated.removeListener(dropIfOriginChanged);
 	chrome.tabs.onRemoved.removeListener(dropIfActive);
+
+	if (isFirefox()) {
+		chrome.webNavigation?.onCommitted.removeListener(dropOnReload);
+	}
+
 	void possiblyActiveTabs.clear();
 }
 

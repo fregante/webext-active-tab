@@ -32,13 +32,14 @@ onActiveTabLost.addListener((tabId) => {
 
 ## Compatibility
 
-- Browser: any browser (Firefox has [some limitations](../readme.md#usage))
+- Browser: any browser (in Firefox, reloads are only detected with the `webNavigation` permission)
 - Manifest: MV3
 
 ## Permissions
 
 - `activeTab`
 - `storage` (optional; without it, the list of active tabs is lost when the background context restarts)
+- `webNavigation` (optional; Firefox only; without it, `activeTab` loss on reload isn't detected)
 
 ## Context
 

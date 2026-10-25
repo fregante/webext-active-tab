@@ -20,9 +20,7 @@ This package exports various utilities, just import what you need.
 - [register-active-tab-scripts](./source/register-active-tab-scripts.md) - Automatically inject scripts into tabs with `activeTab`
 
 > [!NOTE]
-> Firefox has some limitations:
-> - `activeTab` seems to be lost after a reload
-> - further `contextMenu` clicks receive a moz-extension URL rather than the current page’s URL
+> Firefox loses `activeTab` after a reload. It's detected via `webNavigation`, which requires the optional `webNavigation` permission.
 
 ## Related
 
