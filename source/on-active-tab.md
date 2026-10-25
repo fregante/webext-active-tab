@@ -5,6 +5,9 @@ There are several scenarios that trigger the `activeTab` permission, for example
 > [!NOTE]
 > Multiple clicks will not trigger multiple events if the previous `activeTab` is still active.
 
+> [!NOTE]
+> The action’s `onClicked` event does not fire if the manifest’s `action` has a `default_popup`, so `activeTab` won’t be detected when the popup opens. Context menu clicks and commands are also tracked.
+
 ```js
 import {
 	onActiveTab,
@@ -13,7 +16,8 @@ import {
 
 onActiveTab.addListener((tab) => {
 	console.log('We now have access to', tab.origin, 'on tab', tab.id);
-	chrome.scripting.executeFunction({
+	chrome.scripting.executeScript({
+		target: {tabId: tab.id},
 		func() {
 			alert('All your bases are belong to us');
 		}
@@ -28,12 +32,13 @@ onActiveTabLost.addListener((tabId) => {
 
 ## Compatibility
 
-- Browser: any browser
+- Browser: any browser (Firefox has [some limitations](../readme.md#usage))
 - Manifest: MV3
 
 ## Permissions
 
 - `activeTab`
+- `storage` (optional; without it, the list of active tabs is lost when the background context restarts)
 
 ## Context
 
