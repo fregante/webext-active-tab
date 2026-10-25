@@ -117,8 +117,7 @@ function stopActiveTabTracking(): void {
 
 	chrome.tabs.onUpdated.removeListener(dropIfOriginChanged);
 	chrome.tabs.onRemoved.removeListener(dropIfActive);
-	// TODO: Restore after https://github.com/fregante/webext-storage/issues/9
-	// void possiblyActiveTabs.clear();
+	void possiblyActiveTabs.clear();
 }
 
 export const PRIVATE = {
