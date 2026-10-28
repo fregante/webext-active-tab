@@ -3,8 +3,10 @@
 	"compilerOptions": {
 		"lib": null,
 		"types": [
-			"chrome"
+			"chrome",
+			"node"
 		],
+		"rewriteRelativeImportExtensions": true,
 		"rootDir": "source",
 		"outDir": "distribution"
 	},

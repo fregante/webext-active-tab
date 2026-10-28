@@ -27,12 +27,14 @@
 		"demo:watch": "parcel watch --no-cache --no-hmr",
 		"prepare": "tsc --sourceMap false",
 		"lint": "xo",
+		"test:unit": "tsc --noEmit && node --test",
 		"fix": "xo --fix",
-		"test": "run-p lint build demo:build",
+		"test": "run-p lint test:unit demo:build",
 		"watch": "tsc --watch"
 	},
 	"files": [
-		"distribution"
+		"distribution",
+		"!distribution/*.test.*"
 	],
 	"keywords": [
 		"contentscript",
@@ -60,6 +62,7 @@
 		"@parcel/config-webextension": "^2.16.4",
 		"@sindresorhus/tsconfig": "^8.1.0",
 		"@types/chrome": "^0.3.6",
+		"@types/node": "^24.19.2",
 		"globals": "^17.13.0",
 		"npm-run-all2": "^9.0.3",
 		"parcel": "^2.16.4",
