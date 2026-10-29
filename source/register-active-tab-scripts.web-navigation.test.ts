@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-floating-promises -- `node:test` returns promises, fixed in a later xo */
 import {setTimeout as sleep} from 'node:timers/promises';
 import {describe, it, type TestContext} from 'node:test';
 import {disableWebextDetectPageCache} from 'webext-detect';

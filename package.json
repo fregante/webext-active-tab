@@ -27,9 +27,9 @@
 		"demo:watch": "parcel watch --no-cache --no-hmr",
 		"prepare": "tsc --sourceMap false",
 		"lint": "xo",
-		"test:unit": "tsc --noEmit && node --test",
+		"test:unit": "node --test source/*.test.ts",
 		"fix": "xo --fix",
-		"test": "run-p lint test:unit demo:build",
+		"test": "run-p lint build test:unit demo:build",
 		"watch": "tsc --watch"
 	},
 	"files": [
