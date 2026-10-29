@@ -17,6 +17,16 @@ jobs:
       - run: npm ci
       - run: npm run lint
 
+  Test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+      - run: npm ci
+      - run: npm run test:unit
+
   Build:
     runs-on: ubuntu-latest
     steps:

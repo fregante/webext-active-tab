@@ -1,5 +1,5 @@
 import {injectContentScript, type RunAt} from 'webext-content-scripts';
-import {type ActiveTab, onActiveTab, possiblyActiveTabs} from './on-active-tab.js';
+import {type ActiveTab, onActiveTab, possiblyActiveTabs} from './on-active-tab.ts';
 
 export type ActiveTabContentScript = {
 	css?: string[];
